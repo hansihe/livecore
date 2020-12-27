@@ -1,0 +1,64 @@
+<html>
+    <head>
+    </head>
+
+    <body>
+        <div id="pc1">
+            <h5>PC1</h5>
+        </div>
+        <div id="pc2">
+            <h5>PC2</h5>
+        </div>
+
+        <script>
+            let pc1Div = document.getElementById("pc1");
+            let pc2Div = document.getElementById("pc2");
+
+            let pc1Log = function() {
+                console.log("pc1", arguments);
+                pc1Div.innerHTML += `<br>${arguments[0]}`;
+            };
+            let pc2Log = function() {
+                console.log("pc2", arguments);
+                pc2Div.innerHTML += `<br>${arguments[0]}`;
+            };
+
+            let config = {
+                iceServers: [{urls: "stun:stun.1.google.com:19302"}],
+            };
+
+            let pc1 = new RTCPeerConnection(config);
+            let dc1 = pc1.createDataChannel("chat", {negotiated: true, id: 0});
+            pc1.onopen = e => pc1Log("onopen");
+            pc1.onmessage = e => pc1Log("msg: " + e.data);
+            pc1.oniceconnectionstatechange = e => pc1Log("ice connection state change: " + pc1.iceConnectionState);
+
+            let pc2 = new RTCPeerConnection(config);
+            let dc2 = pc2.createDataChannel("chat", {negotiated: true, id: 0});
+            pc2.onopen = e => pc2Log("onopen");
+            pc2.onmessage = e => pc2Log("msg: " + e.data);
+            pc2.oniceconnectionstatechange = e => pc2Log("ice connection state change: " + pc1.iceConnectionState);
+
+            async function createOffer() {
+                await pc1.setLocalDescription(await pc1.createOffer());
+                pc1.onicecandidate = ({candidate}) => {
+                    pc1Log("onicecandidate: ", candidate);
+                    if (candidate) return;
+
+                    if (pc2.signalingState != "stable") {
+                        pc2Log(`offer while signalingState was ${pc2.signalingState}`);
+                        return;
+                    }
+
+                    await pc2.setRemoteDescription(pc1.localDescription.sdp);
+                    await pc2.setLocalDescription(await pc2.createAnswer());
+
+                    pc2.onicecandidate(
+                };
+            }
+
+            createOffer();
+
+        </script>
+    </body>
+</html>

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>MSE Demo</title>
+</head>
+<body>
+  <h1>MSE Demo</h1>
+  <div>
+    <video controls width="80%"></video>
+  </div>
+
+  <script type="text/javascript">
+    (function() {
+      var baseUrl = 'frameout/';
+      var initUrl = baseUrl + 'init.mp4';
+      var segments = [
+        baseUrl + 'chunk_0.mp4', 
+        baseUrl + 'chunk_1.mp4', 
+        baseUrl + 'chunk_2.mp4', 
+        baseUrl + 'chunk_3.mp4', 
+      ];
+
+      var sourceBuffer;
+      var video = document.querySelector('video');
+
+      if (!window.MediaSource) {
+        console.error('No Media Source API available');
+        return;
+      }
+
+      var ms = new MediaSource();
+      video.src = window.URL.createObjectURL(ms);
+      ms.addEventListener('sourceopen', onMediaSourceOpen);
+
+      function onMediaSourceOpen() {
+        sourceBuffer = ms.addSourceBuffer('video/mp4; codecs="avc3.42E01E"');
+        sourceBuffer.addEventListener('updateend', nextSegment);
+
+        GET(initUrl, appendToBuffer);
+
+        video.play();
+      }
+
+      function nextSegment() {
+        var url = segments.shift();
+        if (url === undefined) {
+          sourceBuffer.removeEventListener('updateend', nextSegment);
+        } else {
+          GET(url, appendToBuffer);
+        }
+      }
+
+      function appendToBuffer(videoChunk) {
+        if (videoChunk) {
+          sourceBuffer.appendBuffer(new Uint8Array(videoChunk));
+        }
+      }
+
+      function GET(url, callback) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', url);
+        xhr.responseType = 'arraybuffer';
+
+        xhr.onload = function(e) {
+          if (xhr.status != 200) {
+            console.warn('Unexpected status code ' + xhr.status + ' for ' + url);
+            return false;
+          }
+          callback(xhr.response);
+        };
+
+        xhr.send();
+      }
+    })();
+  </script>
+</body>
+</html>

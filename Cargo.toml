@@ -1,0 +1,12 @@
+[workspace]
+members = [
+    "protocol",
+    "fabric_client",
+    "server_test",
+    "client_test",
+    "mp4",
+    "wasm_util"
+]
+
+[profile.release]
+debug = true

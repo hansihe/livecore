@@ -1,0 +1,10 @@
+/target
+Cargo.lock
+
+*.mp4
+
+test_page/dist
+test_page/node_modules
+test_page/pkg
+
+server_test/frameout

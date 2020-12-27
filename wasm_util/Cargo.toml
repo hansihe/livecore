@@ -1,0 +1,17 @@
+[package]
+name = "wasm_util"
+version = "0.1.0"
+authors = ["Hans Elias B. Josephsen <me@hansihe.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+wasm-bindgen = "0.2.63"
+web-sys = { version = "0.3", features = ["Window", "MediaSource", "Url", "SourceBuffer", "DomException"] }
+js-sys = "0.3"
+
+futures = "0.3"
+tokio = { version = "0.3", features = ["sync"] }
+
+snafu = "0.6"
