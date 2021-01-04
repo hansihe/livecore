@@ -9,6 +9,8 @@ defmodule LCOrch.Application do
     children = [
       # Starts a worker by calling: LCOrch.Worker.start_link(arg)
       # {LCOrch.Worker, arg}
+      LCOrch.KeyServer,
+      {DynamicSupervisor, strategy: :one_for_one, name: LCOrch.NodeSupervisor},
       LCOrch.Endpoint
     ]
 

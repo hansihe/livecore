@@ -5,7 +5,8 @@ members = [
     "server_test",
     "client_test",
     "mp4",
-    "wasm_util"
+    "wasm_util",
+    "orchestrator/native/livecorenode",
 ]
 
 [profile.release]

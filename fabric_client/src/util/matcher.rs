@@ -21,12 +21,38 @@ pub enum HoldError {
     // Timed out without being claimed.
     UnclaimedTimeout,
 }
+impl std::fmt::Display for HoldError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::Replaced => write!(f, "id got replaced"),
+            Self::UnclaimedTimeout => write!(f, "timed out"),
+        }
+    }
+}
+impl std::error::Error for HoldError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        None
+    }
+}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum PermitError {
     // There was already a waiter for the given key.
     AlreadyWaiting,
     Timeout,
+}
+impl std::fmt::Display for PermitError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::AlreadyWaiting => write!(f, "already waiting for id"),
+            Self::Timeout => write!(f, "timed out"),
+        }
+    }
+}
+impl std::error::Error for PermitError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        None
+    }
 }
 
 enum SlotState<V> {

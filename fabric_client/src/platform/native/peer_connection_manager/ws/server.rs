@@ -3,8 +3,6 @@
 //! Uses a `Matcher` to match incoming WS connections to connection requests
 //! from the orchestrator. A timeout is used to prevent DOS attacks.
 
-use super::super::super::{PeerConnection, PeerConnectionManager, PeerTunnel, PeerConnectionError};
-
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
@@ -19,7 +17,8 @@ use futures::stream::StreamExt;
 use tokio_tungstenite::{tungstenite::Message as TMessage, WebSocketStream};
 use tokio_tungstenite::tungstenite;
 
-use crate::matcher::{HoldSuccess, HoldError, PermitError, Matcher};
+use crate::util::matcher::{HoldSuccess, HoldError, PermitError, Matcher};
+use crate::platform::{PeerConnection, PeerConnectionManager, PeerTunnel, PeerConnectionError};
 
 pub type WSMatcher = Matcher<Vec<u8>, WebSocketStream<TcpStream>>;
 
@@ -93,10 +92,7 @@ async fn accept_ws(
     }
 }
 
-pub(super) async fn ws_server(matcher: Arc<WSMatcher>) {
-    let try_socket = TcpListener::bind("0.0.0.0:6789").await;
-    let listener = try_socket.expect("failed to bind");
-
+pub async fn ws_server(listener: TcpListener, matcher: Arc<WSMatcher>) {
     while let Ok((stream, addr)) = listener.accept().await {
         let matcher = matcher.clone();
 
@@ -104,7 +100,7 @@ pub(super) async fn ws_server(matcher: Arc<WSMatcher>) {
     }
 }
 
-pub(super) async fn do_start_connect_incoming(matcher: Arc<WSMatcher>, self_nonce: Vec<u8>, other_nonce: Vec<u8>) -> PeerConnection {
+pub async fn do_start_connect_incoming(matcher: Arc<WSMatcher>, self_nonce: Vec<u8>, other_nonce: Vec<u8>) -> PeerConnection {
     let timeout_time = tokio::time::Instant::now() + Duration::from_millis(10000);
 
     match matcher.receive(&other_nonce, timeout_time).await {

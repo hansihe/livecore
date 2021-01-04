@@ -20,7 +20,7 @@ wasm-bindgen-futures = "0.4.19"
 
 futures = "0.3"
 futures-signals = "0.3"
-tokio = { version = "0.3", features = ["sync"] }
+tokio = { version = "^1.0.1", features = ["sync"] }
 
 snafu = "0.6"
 

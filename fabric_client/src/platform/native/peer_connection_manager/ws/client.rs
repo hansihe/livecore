@@ -1,5 +1,3 @@
-use super::super::super::{PeerConnection, PeerConnectionManager, PeerTunnel, PeerConnectionError};
-
 use std::time::Duration;
 
 use tokio::time::timeout_at;
@@ -10,7 +8,9 @@ use futures::stream::StreamExt;
 use tokio_tungstenite::tungstenite::Message as TMessage;
 use tokio_tungstenite::tungstenite;
 
-pub(super) async fn do_start_connect_outgoing(url: String, self_nonce: Vec<u8>, other_nonce: Vec<u8>) -> PeerConnection {
+use crate::platform::{PeerConnection, PeerConnectionManager, PeerTunnel, PeerConnectionError};
+
+pub async fn do_start_connect_outgoing(url: String, self_nonce: Vec<u8>, other_nonce: Vec<u8>) -> PeerConnection {
     let timeout_time = tokio::time::Instant::now() + Duration::from_millis(10000);
 
     let res = timeout_at(timeout_time, tokio_tungstenite::connect_async(url)).await;

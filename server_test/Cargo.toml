@@ -15,8 +15,8 @@ glib = "0.10"
 gstreamer = "0.16"
 gstreamer-app = "0.16"
 
-tokio = { version = "0.3.5", features = ["full"] }
-tokio-tungstenite = "0.12"
+tokio = { version = "^1.0.1", features = ["full"] }
+tokio-tungstenite = { path = "../../../checkout/tokio-tungstenite" }
 futures = "0.3"
 
 livecore_protocol = { path = "../protocol" }

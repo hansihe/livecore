@@ -4,20 +4,43 @@ version = "0.1.0"
 authors = ["Hans Elias B. Josephsen <me@hansihe.com>"]
 edition = "2018"
 
+[features]
+cli = ["clap"]
+ipc_peer = []
+inmem_peer = []
+
+[[bin]]
+name = "lc_fabric_cli"
+path =  "src/cli.rs"
+required-features = ["cli", "env_logger", "tokio/rt-multi-thread"]
+
 [dependencies]
 async-trait = "0.1.42"
 futures = "0.3"
 
+bytes = "1.0.0"
+
 serde = { version = "^1.0.117", features = ["derive"] }
 serde_json = "1.0.60"
 
-tokio-tungstenite = "0.12.0"
+tokio-util = { version = "0.6.0", features = ["codec"] }
+tokio-tungstenite = { path = "../../../checkout/tokio-tungstenite" }
 
+ring = "0.16"
+
+anyhow = "1.0.37"
 log = "0.4"
 
+livecore_protocol = { path = "../protocol" }
+
+env_logger = { version = "0.8", optional = true }
+clap = { version = "3.0.0-beta.2", optional = true }
+
+lazy_static = "^1.4.0"
+
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tokio = { version = "0.3", features = ["time", "rt", "macros"] }
+tokio = { version = "^1.0.1", features = ["time", "rt", "macros", "net"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-tokio = "0.3"
+tokio = "^1.0.1"
 wasm_util = { path = "../wasm_util" }

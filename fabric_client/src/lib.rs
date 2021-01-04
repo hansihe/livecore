@@ -1,3 +1,7 @@
-mod platform;
+pub mod platform;
+mod util;
+mod data;
+mod peer;
+mod fabric;
 
-mod matcher;
+pub use fabric::{Fabric, FabricBuilder, OrchPacketSender};

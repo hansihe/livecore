@@ -1,82 +1,138 @@
-use super::super::{PeerConnection, PeerConnectionManager, PeerTunnel, PeerConnectionError};
+use crate::platform::{PeerConnection, PeerConnectionManager, PeerTunnel, PeerConnectionError};
 
 use serde::Deserialize;
 use serde_json::Value as JsonValue;
 
 use std::future::Future;
-use std::net::SocketAddr;
 use std::sync::Arc;
-use std::time::Duration;
 use std::pin::Pin;
 
-use tokio::net::{TcpListener, TcpStream};
+use anyhow::Result;
+
 use tokio::task::spawn;
-use tokio::time::timeout_at;
+use tokio::net::{TcpListener, UnixListener};
 
-use futures::sink::SinkExt;
-use futures::stream::StreamExt;
+use livecore_protocol as proto;
+use proto::Uuid;
 
-use tokio_tungstenite::{tungstenite::Message as TMessage, WebSocketStream};
-use tokio_tungstenite::tungstenite;
+mod ws;
 
-use crate::matcher::{HoldSuccess, HoldError, PermitError, Matcher};
+#[cfg(feature = "ipc_peer")]
+mod ipc;
 
-mod ws_in;
-mod ws_out;
+#[cfg(feature = "inmem_peer")]
+mod inmem;
 
-#[derive(Clone)]
-pub struct NativePeerConnectionManager {
-    matcher: Arc<ws_in::WSMatcher>,
+pub struct NativePeerConnectionManagerBuilder {
+    ws_listener: Option<TcpListener>,
+    #[cfg(feature = "ipc_peer")]
+    ipc_listener: Option<UnixListener>,
 }
-
-impl NativePeerConnectionManager {
+impl NativePeerConnectionManagerBuilder {
     pub fn new() -> Self {
-        let matcher = ws_in::WSMatcher::new();
+        NativePeerConnectionManagerBuilder {
+            ws_listener: None,
+            #[cfg(feature = "ipc_peer")]
+            ipc_listener: None,
+        }
+    }
+    pub fn with_ws_listener(mut self, listener: TcpListener) -> Self {
+        self.ws_listener = Some(listener);
+        self
+    }
+    #[cfg(feature = "ipc_peer")]
+    pub fn with_ipc_listener(mut self, listener: UnixListener) -> Self {
+        self.ipc_listener = Some(listener);
+        self
+    }
+    pub fn build(self) -> NativePeerConnectionManager {
+        let ws_matcher = ws::server::WSMatcher::new();
 
-        spawn(ws_in::ws_server(matcher.clone()));
+        #[cfg(feature = "ipc_peer")]
+        let ipc_matcher = ipc::server::IPCMatcher::new();
+
+        if let Some(listener) = self.ws_listener {
+            spawn(ws::server::ws_server(listener, ws_matcher.clone()));
+        }
+
+        #[cfg(feature = "ipc_peer")]
+        if let Some(listener) = self.ipc_listener {
+            spawn(ipc::server::server(listener, ipc_matcher.clone()));
+        }
 
         let manager = NativePeerConnectionManager {
-            matcher,
+            ws_matcher,
+            #[cfg(feature = "ipc_peer")]
+            ipc_matcher,
         };
 
         manager
     }
 }
 
-#[derive(Deserialize)]
-#[serde(tag = "kind", rename_all = "snake_case")]
-enum Config {
-    WebsocketIn {
-        self_nonce: Vec<u8>,
-        other_nonce: Vec<u8>,
-    },
-    WebsocketOut {
-        url: String,
-        self_nonce: Vec<u8>,
-        other_nonce: Vec<u8>,
-    }
+pub struct NativePeerConnectionManager {
+    ws_matcher: Arc<ws::server::WSMatcher>,
+    #[cfg(feature = "ipc_peer")]
+    ipc_matcher: Arc<ipc::server::IPCMatcher>,
 }
 
 impl PeerConnectionManager for NativePeerConnectionManager {
     fn start_connect_peer(
         &self,
         peer_tunnel: PeerTunnel,
-        config: JsonValue,
-    ) -> Pin<Box<dyn Future<Output = PeerConnection> + Send>> {
-        let matcher = self.matcher.clone();
+        conn_type: proto::Connector,
+        self_nonce: Uuid,
+        peer_nonce: Uuid,
+    ) -> Pin<Box<dyn Future<Output = Result<PeerConnection>> + Send>> {
+        let ws_matcher = self.ws_matcher.clone();
+        #[cfg(feature = "ipc_peer")]
+        let ipc_matcher = self.ipc_matcher.clone();
 
-        async fn run(matcher: Arc<ws_in::WSMatcher>, peer_tunnel: PeerTunnel, config: JsonValue) -> PeerConnection {
-            let config: Config = serde_json::from_value(config).unwrap();
+        async fn run(
+            ws_matcher: Arc<ws::server::WSMatcher>,
+            #[cfg(feature = "ipc_peer")]
+            ipc_matcher: Arc<ipc::server::IPCMatcher>,
+            peer_tunnel: PeerTunnel,
+            conn_type: proto::Connector,
+            self_nonce: Uuid,
+            peer_nonce: Uuid,
+        ) -> Result<PeerConnection> {
+            match conn_type {
+                proto::Connector::IpcServer => {
+                    #[cfg(feature = "ipc_peer")]
+                    return Ok(ipc::server::connect(ipc_matcher, self_nonce, peer_nonce).await?);
 
-            match config {
-                Config::WebsocketIn { self_nonce, other_nonce } =>
-                    ws_in::do_start_connect_incoming(matcher, self_nonce, other_nonce).await,
-                Config::WebsocketOut { self_nonce, other_nonce, url } =>
-                    ws_out::do_start_connect_outgoing(url, self_nonce, other_nonce).await,
+                    #[cfg(not(feature = "ipc_peer"))]
+                    panic!("ipc server not supported");
+                },
+                proto::Connector::IpcClient(data) => {
+                    #[cfg(feature = "ipc_peer")]
+                    return Ok(ipc::client::connect(&data.socket_path, self_nonce, peer_nonce).await?);
+
+                    #[cfg(not(feature = "ipc_peer"))]
+                    panic!("ipc client not supported");
+                },
+                proto::Connector::WebsocketServer => {
+                    todo!()
+                },
+                proto::Connector::WebsocketClient(data) => {
+                    todo!()
+                },
+                proto::Connector::WebRTC => {
+                    todo!()
+                },
             }
         }
 
-        Box::pin(run(matcher, peer_tunnel, config))
+        Box::pin(run(
+            ws_matcher,
+            #[cfg(feature = "ipc_peer")]
+            ipc_matcher,
+            peer_tunnel,
+            conn_type,
+            self_nonce,
+            peer_nonce
+        ))
     }
 }
 

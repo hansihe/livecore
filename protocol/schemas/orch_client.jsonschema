@@ -1,0 +1,214 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OrchClientMsg",
+  "anyOf": [
+    {
+      "description": "When establishing a fabric connection, this message must be sent initially by the client.",
+      "type": "object",
+      "required": [
+        "challenge",
+        "node_classes",
+        "peer_connection_capabilities",
+        "pubkey",
+        "ty",
+        "version"
+      ],
+      "properties": {
+        "challenge": {
+          "$ref": "#/definitions/Challenge"
+        },
+        "node_classes": {
+          "description": "The set of classes for a node. Which values are supported here depends on the orchestrator.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "peer_connection_capabilities": {
+          "description": "The types of peer connections the peer is capable of establishing. All nodes should be capable of, at a bare minimum, `WebsocketClient`.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PeerConnectionType"
+          }
+        },
+        "pubkey": {
+          "description": "When a fabric client starts up, it should generate a `ECDSA_P256_SHA256_FIXED` keypair, and send its public key.",
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0.0
+          }
+        },
+        "token": {
+          "description": "A token used for potential authorization or authentication of the client.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ty": {
+          "type": "string",
+          "enum": [
+            "client_handshake"
+          ]
+        },
+        "version": {
+          "description": "Protocol version in use. Right now the fabric can only operate if the client and server versions match, so this functions as a validation.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/protocol_version"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "description": "Sent by the client after it has received a `ServerHandshake`. The handshake procedure is complete after this message is received.",
+      "type": "object",
+      "required": [
+        "challenge_response",
+        "ty"
+      ],
+      "properties": {
+        "challenge_response": {
+          "$ref": "#/definitions/ChallengeResponse"
+        },
+        "ty": {
+          "type": "string",
+          "enum": [
+            "client_handshake_finish"
+          ]
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "Challenge": {
+      "type": "object",
+      "required": [
+        "challenge"
+      ],
+      "properties": {
+        "challenge": {
+          "description": "Challenge for the client to sign with its private key. A value should be formatted as `__HANDSHAKE_CHALLENGE__{challenge}{nonce}__HANDSHAKE_CHALLENGE__` signed, and returned as a `ChallengeResponse`.",
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0.0
+          },
+          "maxItems": 32,
+          "minItems": 32
+        }
+      }
+    },
+    "ChallengeResponse": {
+      "type": "object",
+      "required": [
+        "challenge_response",
+        "signature"
+      ],
+      "properties": {
+        "challenge_response": {
+          "description": "The response for the challenge from the server.",
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0.0
+          }
+        },
+        "signature": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0.0
+          }
+        }
+      }
+    },
+    "PeerConnectionType": {
+      "anyOf": [
+        {
+          "type": "object",
+          "required": [
+            "socket_path",
+            "ty"
+          ],
+          "properties": {
+            "socket_path": {
+              "type": "string"
+            },
+            "ty": {
+              "type": "string",
+              "enum": [
+                "ipc_client"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "ty"
+          ],
+          "properties": {
+            "ty": {
+              "type": "string",
+              "enum": [
+                "ipc_server"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "ty"
+          ],
+          "properties": {
+            "ty": {
+              "type": "string",
+              "enum": [
+                "websocket_client"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "ty"
+          ],
+          "properties": {
+            "ty": {
+              "type": "string",
+              "enum": [
+                "websocket_server"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "ty"
+          ],
+          "properties": {
+            "ty": {
+              "type": "string",
+              "enum": [
+                "web_r_t_c"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "protocol_version": {
+      "const": 0
+    }
+  }
+}
